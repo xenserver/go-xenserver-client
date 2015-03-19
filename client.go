@@ -331,6 +331,15 @@ func (self *VM) Clone(label string) (new_instance *VM, err error) {
 	return
 }
 
+func (self *VM) Provision() (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.provision", self.Ref)
+	if err != nil {
+		return err
+	}
+	return
+}
+
 func (self *VM) Destroy() (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.destroy", self.Ref)
