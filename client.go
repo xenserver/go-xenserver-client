@@ -323,16 +323,15 @@ func (client *XenAPIClient) CreateTask() (task *Task, err error) {
 	return
 }
 
-func (client *XenAPIClient) CreateNetwork(name_label string, name_description string) (network *Network, err error) {
+func (client *XenAPIClient) CreateNetwork(name_label string, name_description string, bridge string) (network *Network, err error) {
 	network = new(Network)
 
 	net_rec := make(xmlrpc.Struct)
 	net_rec["name_label"] = name_label
 	net_rec["name_description"] = name_description 
-	net_rec["bridge"] = ""
+	net_rec["bridge"] = bridge
 	net_rec["other_config"] = make(xmlrpc.Struct)
 
-	fmt.Println ("foo")
 	result := APIResult{}
 	err = client.APICall(&result, "network.create", net_rec)
 	if err != nil {
@@ -460,6 +459,21 @@ func (self *VM) Resume(paused, force bool) (err error) {
 	}
 	return
 }
+
+func (self *VM) GetHVMBootPolicy() (bootOrder string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_HVM_boot_policy", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	bootOrder = ""
+	if result.Value != nil {
+		bootOrder = result.Value.(string)
+	}
+
+	return bootOrder, nil
+}
+
 
 func (self *VM) SetHVMBoot(policy, bootOrder string) (err error) {
 	result := APIResult{}
@@ -1010,6 +1024,17 @@ func (self *VDI) GetVBDs() (vbds []VBD, err error) {
 
 	return vbds, nil
 }
+
+func (self *VDI) GetVirtualSize() (virtual_size string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VDI.get_virtual_size", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	virtual_size = result.Value.(string)  
+	return virtual_size, nil
+}
+
 
 func (self *VDI) Destroy() (err error) {
 	result := APIResult{}
