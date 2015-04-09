@@ -1,11 +1,16 @@
 package client
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/nilshell/xmlrpc"
-	"log"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"regexp"
+	"strconv"
 )
 
 type XenAPIClient struct {
@@ -28,6 +33,7 @@ type XenAPIObject struct {
 	Client *XenAPIClient
 }
 
+type Host XenAPIObject
 type VM XenAPIObject
 type SR XenAPIObject
 type VDI XenAPIObject
@@ -59,7 +65,7 @@ const (
 )
 
 func (c *XenAPIClient) RPCCall(result interface{}, method string, params []interface{}) (err error) {
-	fmt.Println(params)
+	log.Debugf("RPCCall method=%v params=%v\n", method, params)
 	p := new(xmlrpc.Params)
 	p.Params = params
 	err = c.RPC.Call(method, *p, result)
@@ -81,7 +87,7 @@ func (client *XenAPIClient) Login() (err error) {
 
 func (client *XenAPIClient) APICall(result *APIResult, method string, params ...interface{}) (err error) {
 	if client.Session == nil {
-		fmt.Println("Error: no session")
+		log.Errorf("no session\n")
 		return fmt.Errorf("No session. Unable to make call")
 	}
 
@@ -106,8 +112,7 @@ func (client *XenAPIClient) APICall(result *APIResult, method string, params ...
 	result.Status = res["Status"].(string)
 
 	if result.Status != "Success" {
-		fmt.Println("Encountered an API error: ", result.Status)
-		fmt.Println(res["ErrorDescription"])
+		log.Errorf("Encountered an API error: %v %v", result.Status, res["ErrorDescription"])
 		return fmt.Errorf("API Error: %s", res["ErrorDescription"])
 	} else {
 		result.Value = res["Value"]
@@ -115,12 +120,20 @@ func (client *XenAPIClient) APICall(result *APIResult, method string, params ...
 	return
 }
 
-func (client *XenAPIClient) GetHosts() (err error) {
+func (client *XenAPIClient) GetHosts() (hosts []*Host, err error) {
+	hosts = make([]*Host, 0)
 	result := APIResult{}
-	_ = client.APICall(&result, "host.get_all")
-	hosts := result.Value
-	fmt.Println(hosts)
-	return nil
+	err = client.APICall(&result, "host.get_all")
+	if err != nil {
+		return hosts, err
+	}
+	for _, elem := range result.Value.([]interface{}) {
+		host := new(Host)
+		host.Ref = elem.(string)
+		host.Client = client
+		hosts = append(hosts, host)
+	}
+	return hosts, nil
 }
 
 func (client *XenAPIClient) GetPools() (pools []*Pool, err error) {
@@ -177,10 +190,22 @@ func (client *XenAPIClient) GetVMByUuid(vm_uuid string) (vm *VM, err error) {
 	return
 }
 
-func (client *XenAPIClient) GetVMByNameLabel(name_label string) (vms []*VM, err error) {
+func (client *XenAPIClient) GetHostByUuid(host_uuid string) (host *Host, err error) {
+	host = new(Host)
+	result := APIResult{}
+	err = client.APICall(&result, "host.get_by_uuid", host_uuid)
+	if err != nil {
+		return nil, err
+	}
+	host.Ref = result.Value.(string)
+	host.Client = client
+	return
+}
+
+func (client *XenAPIClient) GetVMByNameLabel(label string) (vms []*VM, err error) {
 	vms = make([]*VM, 0)
 	result := APIResult{}
-	err = client.APICall(&result, "VM.get_by_name_label", name_label)
+	err = client.APICall(&result, "VM.get_by_name_label", label)
 	if err != nil {
 		return vms, err
 	}
@@ -195,10 +220,28 @@ func (client *XenAPIClient) GetVMByNameLabel(name_label string) (vms []*VM, err 
 	return vms, nil
 }
 
-func (client *XenAPIClient) GetSRByNameLabel(name_label string) (srs []*SR, err error) {
+func (client *XenAPIClient) GetHostByNameLabel(label string) (hosts []*Host, err error) {
+	hosts = make([]*Host, 0)
+	result := APIResult{}
+	err = client.APICall(&result, "host.get_by_name_label", label)
+	if err != nil {
+		return hosts, err
+	}
+
+	for _, elem := range result.Value.([]interface{}) {
+		host := new(Host)
+		host.Ref = elem.(string)
+		host.Client = client
+		hosts = append(hosts, host)
+	}
+
+	return hosts, nil
+}
+
+func (client *XenAPIClient) GetSRByNameLabel(label string) (srs []*SR, err error) {
 	srs = make([]*SR, 0)
 	result := APIResult{}
-	err = client.APICall(&result, "SR.get_by_name_label", name_label)
+	err = client.APICall(&result, "SR.get_by_name_label", label)
 	if err != nil {
 		return srs, err
 	}
@@ -213,6 +256,24 @@ func (client *XenAPIClient) GetSRByNameLabel(name_label string) (srs []*SR, err 
 	return srs, nil
 }
 
+func (client *XenAPIClient) GetNetworks() (networks []*Network, err error) {
+	networks = make([]*Network, 0)
+	result := APIResult{}
+	err = client.APICall(&result, "network.get_all")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, elem := range result.Value.([]interface{}) {
+		network := new(Network)
+		network.Ref = elem.(string)
+		network.Client = client
+		networks = append(networks, network)
+	}
+
+	return networks, nil
+}
+
 func (client *XenAPIClient) GetNetworkByUuid(network_uuid string) (network *Network, err error) {
 	network = new(Network)
 	result := APIResult{}
@@ -225,10 +286,10 @@ func (client *XenAPIClient) GetNetworkByUuid(network_uuid string) (network *Netw
 	return
 }
 
-func (client *XenAPIClient) GetNetworkByNameLabel(name_label string) (networks []*Network, err error) {
+func (client *XenAPIClient) GetNetworkByNameLabel(label string) (networks []*Network, err error) {
 	networks = make([]*Network, 0)
 	result := APIResult{}
-	err = client.APICall(&result, "network.get_by_name_label", name_label)
+	err = client.APICall(&result, "network.get_by_name_label", label)
 	if err != nil {
 		return networks, err
 	}
@@ -243,10 +304,10 @@ func (client *XenAPIClient) GetNetworkByNameLabel(name_label string) (networks [
 	return networks, nil
 }
 
-func (client *XenAPIClient) GetVdiByNameLabel(name_label string) (vdis []*VDI, err error) {
+func (client *XenAPIClient) GetVdiByNameLabel(label string) (vdis []*VDI, err error) {
 	vdis = make([]*VDI, 0)
 	result := APIResult{}
-	err = client.APICall(&result, "VDI.get_by_name_label", name_label)
+	err = client.APICall(&result, "VDI.get_by_name_label", label)
 	if err != nil {
 		return vdis, err
 	}
@@ -316,6 +377,21 @@ func (client *XenAPIClient) CreateTask() (task *Task, err error) {
 	return
 }
 
+// Host associated functions
+func (self *Host) CallPlugin(plugin, method string, params map[string]string) (response string, err error) {
+	result := APIResult{}
+	params_rec := make(xmlrpc.Struct)
+	for key, value := range params {
+		params_rec[key] = value
+	}
+	err = self.Client.APICall(&result, "host.call_plugin", self.Ref, plugin, method, params_rec)
+	if err != nil {
+		return "", err
+	}
+	response = result.Value.(string)
+	return
+}
+
 // VM associated functions
 
 func (self *VM) Clone(label string) (new_instance *VM, err error) {
@@ -358,6 +434,15 @@ func (self *VM) Start(paused, force bool) (err error) {
 	return
 }
 
+func (self *VM) StartOn(host *Host, paused, force bool) (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.start_on", self.Ref, host.Ref, paused, force)
+	if err != nil {
+		return err
+	}
+	return
+}
+
 func (self *VM) CleanShutdown() (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.clean_shutdown", self.Ref)
@@ -370,6 +455,24 @@ func (self *VM) CleanShutdown() (err error) {
 func (self *VM) HardShutdown() (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.hard_shutdown", self.Ref)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VM) CleanReboot() (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.clean_reboot", self.Ref)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VM) HardReboot() (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.hard_reboot", self.Ref)
 	if err != nil {
 		return err
 	}
@@ -462,6 +565,22 @@ func (self *VM) GetVBDs() (vbds []VBD, err error) {
 	return vbds, nil
 }
 
+func (self *VM) GetAllowedVBDDevices() (devices []string, err error) {
+	var device string
+	devices = make([]string, 0)
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_allowed_VBD_devices", self.Ref)
+	if err != nil {
+		return devices, err
+	}
+	for _, elem := range result.Value.([]interface{}) {
+		device = elem.(string)
+		devices = append(devices, device)
+	}
+
+	return devices, nil
+}
+
 func (self *VM) GetVIFs() (vifs []VIF, err error) {
 	vifs = make([]VIF, 0)
 	result := APIResult{}
@@ -477,6 +596,22 @@ func (self *VM) GetVIFs() (vifs []VIF, err error) {
 	}
 
 	return vifs, nil
+}
+
+func (self *VM) GetAllowedVIFDevices() (devices []string, err error) {
+	var device string
+	devices = make([]string, 0)
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_allowed_VIF_devices", self.Ref)
+	if err != nil {
+		return devices, err
+	}
+	for _, elem := range result.Value.([]interface{}) {
+		device = elem.(string)
+		devices = append(devices, device)
+	}
+
+	return devices, nil
 }
 
 func (self *VM) GetDisks() (vdis []*VDI, err error) {
@@ -532,7 +667,7 @@ func (self *VM) GetGuestMetrics() (metrics map[string]interface{}, err error) {
 	return result.Value.(xmlrpc.Struct), nil
 }
 
-func (self *VM) SetStaticMemoryRange(min, max uint) (err error) {
+func (self *VM) SetStaticMemoryRange(min, max uint64) (err error) {
 	result := APIResult{}
 	strMin := fmt.Sprintf("%d", min)
 	strMax := fmt.Sprintf("%d", max)
@@ -543,14 +678,17 @@ func (self *VM) SetStaticMemoryRange(min, max uint) (err error) {
 	return
 }
 
-func (self *VM) ConnectVdi(vdi *VDI, vdiType VDIType) (err error) {
+func (self *VM) ConnectVdi(vdi *VDI, vdiType VDIType, userdevice string) (err error) {
 
 	// 1. Create a VBD
+	if userdevice == "" {
+		userdevice = "autodetect"
+	}
 
 	vbd_rec := make(xmlrpc.Struct)
 	vbd_rec["VM"] = self.Ref
 	vbd_rec["VDI"] = vdi.Ref
-	vbd_rec["userdevice"] = "autodetect"
+	vbd_rec["userdevice"] = userdevice
 	vbd_rec["empty"] = false
 	vbd_rec["other_config"] = make(xmlrpc.Struct)
 	vbd_rec["qos_algorithm_type"] = ""
@@ -582,12 +720,10 @@ func (self *VM) ConnectVdi(vdi *VDI, vdiType VDIType) (err error) {
 	}
 
 	vbd_ref := result.Value.(string)
-	fmt.Println("VBD Ref:", vbd_ref)
 
 	result = APIResult{}
 	err = self.Client.APICall(&result, "VBD.get_uuid", vbd_ref)
 
-	fmt.Println("VBD UUID: ", result.Value.(string))
 	/*
 	   // 2. Plug VBD (Non need - the VM hasn't booted.
 	   // @todo - check VM state
@@ -624,7 +760,7 @@ func (self *VM) DisconnectVdi(vdi *VDI) error {
 				return nil
 			}
 		} else {
-			log.Printf("Could not find VDI record in VBD '%s'", vbd.Ref)
+			log.Errorf("Could not find VDI record in VBD %v\n", vbd.Ref)
 		}
 	}
 
@@ -656,6 +792,8 @@ func (self *VM) ConnectNetwork(network *Network, device string) (vif *VIF, err e
 	vif_rec["device"] = device
 	vif_rec["MTU"] = "1504"
 	vif_rec["other_config"] = make(xmlrpc.Struct)
+	vif_rec["MAC_autogenerated"] = true
+	vif_rec["locking_mode"] = "network_default"
 	vif_rec["qos_algorithm_type"] = ""
 	vif_rec["qos_algorithm_params"] = make(xmlrpc.Struct)
 
@@ -684,13 +822,85 @@ func (self *VM) SetIsATemplate(is_a_template bool) (err error) {
 	return
 }
 
-// SR associated functions
+func (self *VM) SetOtherConfig(other_config map[string]string) (err error) {
+	result := APIResult{}
+	other_config_rec := make(xmlrpc.Struct)
+	for key, value := range other_config {
+		other_config_rec[key] = value
+	}
+	err = self.Client.APICall(&result, "VM.set_other_config", self.Ref, other_config_rec)
+	if err != nil {
+		return err
+	}
+	return
+}
 
-func (self *SR) CreateVdi(name_label string, size int64) (vdi *VDI, err error) {
+func (self *VM) SetNameLabel(label string) (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.set_name_label", self.Ref, label)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VM) SetDescription(description string) (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.set_description", self.Ref, description)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VM) SetVCPUsMax(vcpus uint) (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.set_VCPUs_max", self.Ref, strconv.Itoa(int(vcpus)))
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VM) SetVCPUsAtStartup(vcpus uint) (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.set_VCPUs_at_startup", self.Ref, strconv.Itoa(int(vcpus)))
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VM) SetSuspendSR(vdi *VDI) (err error) {
+	result := APIResult{}
+	var vdi_uuid string
+	vdi_uuid, err = vdi.GetUuid()
+	if err != nil {
+		return err
+	}
+	err = self.Client.APICall(&result, "VM.set_suspend_SR", self.Ref, vdi_uuid)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+// SR associated functions
+func (self *SR) GetUuid() (uuid string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "SR.get_uuid", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	uuid = result.Value.(string)
+	return uuid, nil
+}
+
+func (self *SR) CreateVdi(label string, size int64) (vdi *VDI, err error) {
 	vdi = new(VDI)
 
 	vdi_rec := make(xmlrpc.Struct)
-	vdi_rec["name_label"] = name_label
+	vdi_rec["name_label"] = label
 	vdi_rec["SR"] = self.Ref
 	vdi_rec["virtual_size"] = fmt.Sprintf("%d", size)
 	vdi_rec["type"] = "user"
@@ -728,6 +938,29 @@ func (self *Network) GetAssignedIPs() (ip_map map[string]string, err error) {
 	return ip_map, nil
 }
 
+func (self *Network) GetOtherConfig() (other_config map[string]string, err error) {
+	other_config = make(map[string]string, 0)
+	result := APIResult{}
+	err = self.Client.APICall(&result, "network.get_other_config", self.Ref)
+	if err != nil {
+		return other_config, err
+	}
+	for k, v := range result.Value.(xmlrpc.Struct) {
+		other_config[k] = v.(string)
+	}
+	return other_config, nil
+}
+
+func (self *Network) IsHostInternalManagementNetwork() (is_host_internal_management_network bool, err error) {
+	other_config, err := self.GetOtherConfig()
+	if err != nil {
+		return false, nil
+	}
+	value, ok := other_config["is_host_internal_management_network"]
+	is_host_internal_management_network = ok && value == "true"
+	return is_host_internal_management_network, nil
+}
+
 // PIF associated functions
 
 func (self *PIF) GetRecord() (record map[string]interface{}, err error) {
@@ -744,6 +977,18 @@ func (self *PIF) GetRecord() (record map[string]interface{}, err error) {
 }
 
 // Pool associated functions
+
+func (self *Pool) GetMaster() (master *Host, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "pool.get_master", self.Ref)
+	if err != nil {
+		return nil, err
+	}
+	master = new(Host)
+	master.Ref = result.Value.(string)
+	master.Client = self.Client
+	return master, nil
+}
 
 func (self *Pool) GetRecord() (record map[string]interface{}, err error) {
 	record = make(map[string]interface{})
@@ -852,6 +1097,15 @@ func (self *VDI) GetVBDs() (vbds []VBD, err error) {
 	return vbds, nil
 }
 
+func (self *VDI) Forget() (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VDI.forget", self.Ref)
+	if err != nil {
+		return err
+	}
+	return
+}
+
 func (self *VDI) Destroy() (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VDI.destroy", self.Ref)
@@ -859,6 +1113,78 @@ func (self *VDI) Destroy() (err error) {
 		return err
 	}
 	return
+}
+
+func (self *VDI) SetNameLabel(label string) (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VDI.set_name_label", self.Ref, label)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VDI) SetReadOnly(value bool) (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VDI.set_read_only", self.Ref, value)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VDI) SetSharable(value bool) (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VDI.set_sharable", self.Ref, value)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VDI) Import(reader io.Reader, size int64, insecureSkipVerify bool) (task *Task, err error) {
+	task, err = self.Client.CreateTask()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to create task: %v", err)
+	}
+	// runtime.SetFinalizer(task, func(t *Task) {
+	// 	t.Destroy()
+	// })
+
+	urlStr := fmt.Sprintf("https://%s/import_raw_vdi?vdi=%s&session_id=%s&task_id=%s",
+		self.Client.Host, self.Ref, self.Client.Session.(string), task.Ref)
+	if size < 0 {
+		urlStr += "&chunked"
+	}
+
+	// Define a new http Transport which allows self-signed certs
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify},
+	}
+
+	req, err := http.NewRequest("PUT", urlStr, reader)
+	if err != nil {
+		return nil, err
+	}
+	req.ContentLength = size
+
+	log.Infof("req=%#v", req)
+
+	resp, err := tr.RoundTrip(req)
+	if err != nil {
+		log.Errorf("Unable to upload ISO VDI: %v", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		msg, _ := ioutil.ReadAll(resp.Body)
+		err = fmt.Errorf("xenserver reply %s: %v", resp.Status, string(msg))
+		log.Errorf("Unable to upload ISO VDI: %v", err)
+		return nil, err
+	}
+
+	return task, nil
 }
 
 // Task associated functions
