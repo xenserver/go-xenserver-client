@@ -8,11 +8,11 @@ import (
 
 type VM XenAPIObject
 
-func (self *VM) Clone(label string) (new_instance *VM, err error) {
+func (self *VM) Clone(name_label string) (new_instance *VM, err error) {
 	new_instance = new(VM)
 
 	result := APIResult{}
-	err = self.Client.APICall(&result, "VM.clone", self.Ref, label)
+	err = self.Client.APICall(&result, "VM.clone", self.Ref, name_label)
 	if err != nil {
 		return nil, err
 	}
@@ -447,9 +447,9 @@ func (self *VM) SetOtherConfig(other_config map[string]string) (err error) {
 	return
 }
 
-func (self *VM) SetNameLabel(label string) (err error) {
+func (self *VM) SetNameLabel(name_label string) (err error) {
 	result := APIResult{}
-	err = self.Client.APICall(&result, "VM.set_name_label", self.Ref, label)
+	err = self.Client.APICall(&result, "VM.set_name_label", self.Ref, name_label)
 	if err != nil {
 		return err
 	}

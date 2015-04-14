@@ -17,11 +17,11 @@ func (self *SR) GetUuid() (uuid string, err error) {
 	return uuid, nil
 }
 
-func (self *SR) CreateVdi(label string, size int64) (vdi *VDI, err error) {
+func (self *SR) CreateVdi(name_label string, size int64) (vdi *VDI, err error) {
 	vdi = new(VDI)
 
 	vdi_rec := make(xmlrpc.Struct)
-	vdi_rec["name_label"] = label
+	vdi_rec["name_label"] = name_label
 	vdi_rec["SR"] = self.Ref
 	vdi_rec["virtual_size"] = fmt.Sprintf("%d", size)
 	vdi_rec["type"] = "user"

@@ -56,9 +56,9 @@ func (self *VDI) Destroy() (err error) {
 	return
 }
 
-func (self *VDI) SetNameLabel(label string) (err error) {
+func (self *VDI) SetNameLabel(name_label string) (err error) {
 	result := APIResult{}
-	err = self.Client.APICall(&result, "VDI.set_name_label", self.Ref, label)
+	err = self.Client.APICall(&result, "VDI.set_name_label", self.Ref, name_label)
 	if err != nil {
 		return err
 	}

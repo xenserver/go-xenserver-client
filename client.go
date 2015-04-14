@@ -165,10 +165,10 @@ func (client *XenAPIClient) GetHostByUuid(host_uuid string) (host *Host, err err
 	return
 }
 
-func (client *XenAPIClient) GetVMByNameLabel(label string) (vms []*VM, err error) {
+func (client *XenAPIClient) GetVMByNameLabel(name_label string) (vms []*VM, err error) {
 	vms = make([]*VM, 0)
 	result := APIResult{}
-	err = client.APICall(&result, "VM.get_by_name_label", label)
+	err = client.APICall(&result, "VM.get_by_name_label", name_label)
 	if err != nil {
 		return vms, err
 	}
@@ -183,10 +183,10 @@ func (client *XenAPIClient) GetVMByNameLabel(label string) (vms []*VM, err error
 	return vms, nil
 }
 
-func (client *XenAPIClient) GetHostByNameLabel(label string) (hosts []*Host, err error) {
+func (client *XenAPIClient) GetHostByNameLabel(name_label string) (hosts []*Host, err error) {
 	hosts = make([]*Host, 0)
 	result := APIResult{}
-	err = client.APICall(&result, "host.get_by_name_label", label)
+	err = client.APICall(&result, "host.get_by_name_label", name_label)
 	if err != nil {
 		return hosts, err
 	}
@@ -201,10 +201,10 @@ func (client *XenAPIClient) GetHostByNameLabel(label string) (hosts []*Host, err
 	return hosts, nil
 }
 
-func (client *XenAPIClient) GetSRByNameLabel(label string) (srs []*SR, err error) {
+func (client *XenAPIClient) GetSRByNameLabel(name_label string) (srs []*SR, err error) {
 	srs = make([]*SR, 0)
 	result := APIResult{}
-	err = client.APICall(&result, "SR.get_by_name_label", label)
+	err = client.APICall(&result, "SR.get_by_name_label", name_label)
 	if err != nil {
 		return srs, err
 	}
@@ -249,10 +249,10 @@ func (client *XenAPIClient) GetNetworkByUuid(network_uuid string) (network *Netw
 	return
 }
 
-func (client *XenAPIClient) GetNetworkByNameLabel(label string) (networks []*Network, err error) {
+func (client *XenAPIClient) GetNetworkByNameLabel(name_label string) (networks []*Network, err error) {
 	networks = make([]*Network, 0)
 	result := APIResult{}
-	err = client.APICall(&result, "network.get_by_name_label", label)
+	err = client.APICall(&result, "network.get_by_name_label", name_label)
 	if err != nil {
 		return networks, err
 	}
@@ -267,10 +267,10 @@ func (client *XenAPIClient) GetNetworkByNameLabel(label string) (networks []*Net
 	return networks, nil
 }
 
-func (client *XenAPIClient) GetVdiByNameLabel(label string) (vdis []*VDI, err error) {
+func (client *XenAPIClient) GetVdiByNameLabel(name_label string) (vdis []*VDI, err error) {
 	vdis = make([]*VDI, 0)
 	result := APIResult{}
-	err = client.APICall(&result, "VDI.get_by_name_label", label)
+	err = client.APICall(&result, "VDI.get_by_name_label", name_label)
 	if err != nil {
 		return vdis, err
 	}
