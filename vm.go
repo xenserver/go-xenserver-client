@@ -546,7 +546,7 @@ func (self *VM) SetNameLabel(name_label string) (err error) {
 
 func (self *VM) SetDescription(description string) (err error) {
 	result := APIResult{}
-	err = self.Client.APICall(&result, "VM.set_description", self.Ref, description)
+	err = self.Client.APICall(&result, "VM.set_name_description", self.Ref, description)
 	if err != nil {
 		return err
 	}
