@@ -31,3 +31,19 @@ func (self *Host) GetAddress() (address string, err error) {
 	return address, nil
 }
 
+
+func (self *Host) GetSoftwareVersion() (versions map[string]interface{}, err error) {
+	versions = make(map[string]interface{})
+
+	result := APIResult{}
+	err = self.Client.APICall(&result, "host.get_software_version", self.Ref)
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range result.Value.(xmlrpc.Struct) {
+		versions[k] = v.(string)
+	}
+	return
+}
+
