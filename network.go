@@ -50,4 +50,3 @@ func (self *Network) Destroy() (err error) {
 	}
 	return
 }
-

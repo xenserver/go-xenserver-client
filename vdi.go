@@ -1,10 +1,10 @@
 package client
 
 import (
-        "encoding/xml"
-        "errors"
-        "fmt"
-         log "github.com/Sirupsen/logrus"
+	"encoding/xml"
+	"errors"
+	"fmt"
+	log "github.com/Sirupsen/logrus"
 )
 
 type VDI XenAPIObject
@@ -51,7 +51,7 @@ func (self *VDI) GetVirtualSize() (virtual_size string, err error) {
 	if err != nil {
 		return "", err
 	}
-	virtual_size = result.Value.(string)  
+	virtual_size = result.Value.(string)
 	return virtual_size, nil
 }
 
@@ -99,7 +99,6 @@ func (self *VDI) SetSharable(value bool) (err error) {
 	}
 	return
 }
-
 
 // Expose a VDI using the Transfer VM
 // (Legacy VHD export)
