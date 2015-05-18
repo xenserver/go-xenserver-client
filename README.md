@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/xenserver/go-xenserver-client.svg?branch=master)](https://travis-ci.org/xenserver/go-xenserver-client)
+
 go-xenserver-client
 ===================
 
