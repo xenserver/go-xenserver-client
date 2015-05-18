@@ -47,9 +47,9 @@ func (client *XenAPIClient) Login() (err error) {
 	if err == nil {
 		// err might not be set properly, so check the reference
 		if result["Value"] == nil {
-			return errors.New ("Invalid credentials supplied")
+			return errors.New("Invalid credentials supplied")
 		}
-	}	
+	}
 	client.Session = result["Value"]
 	return err
 }
@@ -351,7 +351,7 @@ func (client *XenAPIClient) CreateNetwork(name_label string, name_description st
 
 	net_rec := make(xmlrpc.Struct)
 	net_rec["name_label"] = name_label
-	net_rec["name_description"] = name_description 
+	net_rec["name_description"] = name_description
 	net_rec["bridge"] = bridge
 	net_rec["other_config"] = make(xmlrpc.Struct)
 
