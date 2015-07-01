@@ -123,6 +123,25 @@ func (client *XenAPIClient) GetPools() (pools []*Pool, err error) {
 	return pools, nil
 }
 
+func (client *XenAPIClient) GetSRs() (srs []*SR, err error) {
+	srs = make([]*SR, 0)
+	result := APIResult{}
+	err = client.APICall(&result, "SR.get_all")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, elem := range result.Value.([]interface{}) {
+		sr := new(SR)
+		sr.Ref = elem.(string)
+		sr.Client = client
+		srs = append(srs, sr)
+	}
+
+	return srs, nil
+}
+
+
 func (client *XenAPIClient) GetDefaultSR() (sr *SR, err error) {
 	pools, err := client.GetPools()
 

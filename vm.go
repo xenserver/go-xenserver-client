@@ -2,11 +2,27 @@ package client
 
 import (
 	"fmt"
-	"github.com/nilshell/xmlrpc"
 	"strconv"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/nilshell/xmlrpc"
+	// 	"time"
 )
 
 type VM XenAPIObject
+
+func (self *VM) GetRecord() (record map[string]interface{}, err error) {
+	record = make(map[string]interface{})
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_record", self.Ref)
+	if err != nil {
+		return record, err
+	}
+	for k, v := range result.Value.(xmlrpc.Struct) {
+		record[k] = v
+	}
+	return record, nil
+}
 
 func (self *VM) Clone(name_label string) (new_instance *VM, err error) {
 	new_instance = new(VM)
@@ -275,6 +291,23 @@ func (self *VM) GetVIFs() (vifs []VIF, err error) {
 	return vifs, nil
 }
 
+func (self *VM) GetConsoles() (consoles []Console, err error) {
+	consoles = make([]Console, 0)
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_consoles", self.Ref)
+	if err != nil {
+		return consoles, err
+	}
+	for _, elem := range result.Value.([]interface{}) {
+		console := Console{}
+		console.Ref = elem.(string)
+		console.Client = self.Client
+		consoles = append(consoles, console)
+	}
+
+	return consoles, nil
+}
+
 func (self *VM) GetAllowedVIFDevices() (devices []string, err error) {
 	var device string
 	devices = make([]string, 0)
@@ -361,7 +394,7 @@ func (self *VM) ConnectVdi(vdi *VDI, vdiType VDIType, userdevice string) (err er
 	if userdevice == "" {
 		userdevice = "autodetect"
 	}
-
+	log.Debugf("RPCCall method=%v params=%v\n", "asdasd", "asdasdasd")
 	vbd_rec := make(xmlrpc.Struct)
 	vbd_rec["VM"] = self.Ref
 	vbd_rec["VDI"] = vdi.Ref
@@ -370,7 +403,7 @@ func (self *VM) ConnectVdi(vdi *VDI, vdiType VDIType, userdevice string) (err er
 	vbd_rec["other_config"] = make(xmlrpc.Struct)
 	vbd_rec["qos_algorithm_type"] = ""
 	vbd_rec["qos_algorithm_params"] = make(xmlrpc.Struct)
-
+	fmt.Println(vdiType)
 	switch vdiType {
 	case CD:
 		vbd_rec["mode"] = "RO"
@@ -386,20 +419,20 @@ func (self *VM) ConnectVdi(vdi *VDI, vdiType VDIType, userdevice string) (err er
 		vbd_rec["mode"] = "RW"
 		vbd_rec["bootable"] = false
 		vbd_rec["unpluggable"] = true
-		vbd_rec["type"] = "Floppy"
+		vbd_rec["type"] = "Disk"
 	}
-
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VBD.create", vbd_rec)
-
+	return nil
 	if err != nil {
 		return err
 	}
 
-	vbd_ref := result.Value.(string)
+	//vbd_ref := result.Value.(string)
 
-	result = APIResult{}
-	err = self.Client.APICall(&result, "VBD.get_uuid", vbd_ref)
+	//result = APIResult{}
+	//err = self.Client.APICall(&result, "VBD.get_uuid", vbd_ref)
+	return nil
 
 	/*
 	   // 2. Plug VBD (Non need - the VM hasn't booted.
@@ -411,7 +444,7 @@ func (self *VM) ConnectVdi(vdi *VDI, vdiType VDIType, userdevice string) (err er
 	       return err
 	   }
 	*/
-	return
+	//return
 }
 
 func (self *VM) DisconnectVdi(vdi *VDI) error {
