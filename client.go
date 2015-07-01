@@ -141,7 +141,6 @@ func (client *XenAPIClient) GetSRs() (srs []*SR, err error) {
 	return srs, nil
 }
 
-
 func (client *XenAPIClient) GetDefaultSR() (sr *SR, err error) {
 	pools, err := client.GetPools()
 
