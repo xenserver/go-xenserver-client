@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/nilshell/xmlrpc"
 )
@@ -121,6 +122,24 @@ func (client *XenAPIClient) GetPools() (pools []*Pool, err error) {
 	}
 
 	return pools, nil
+}
+
+func (client *XenAPIClient) GetVMs() (vms []*VM, err error) {
+	vms = make([]*VM, 0)
+	result := APIResult{}
+	err = client.APICall(&result, "VM.get_all")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, elem := range result.Value.([]interface{}) {
+		vm := new(VM)
+		vm.Ref = elem.(string)
+		vm.Client = client
+		vms = append(vms, vm)
+	}
+
+	return
 }
 
 func (client *XenAPIClient) GetDefaultSR() (sr *SR, err error) {
