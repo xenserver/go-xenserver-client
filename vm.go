@@ -2,11 +2,56 @@ package client
 
 import (
 	"fmt"
-	"github.com/nilshell/xmlrpc"
 	"strconv"
+
+	"github.com/nilshell/xmlrpc"
 )
 
-type VM XenAPIObject
+type VM struct {
+	Name        string
+	Description string
+	Uuid        string
+	PowerState  string
+
+	IsVM            bool
+	IsTemplate      bool
+	IsControlDomain bool
+
+	Record map[string]interface{}
+	XenAPIObject
+}
+
+func (self *VM) GetRecord() (record map[string]interface{}, err error) {
+	record = make(map[string]interface{})
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_record", self.Ref)
+	if err != nil {
+		return record, err
+	}
+	for k, v := range result.Value.(xmlrpc.Struct) {
+		record[k] = v
+
+		switch k {
+		case "is_a_template":
+			self.IsTemplate, _ = v.(bool)
+		case "is_control_domain":
+			self.IsControlDomain, _ = v.(bool)
+		case "uuid":
+			self.Uuid, _ = v.(string)
+		case "name_label":
+			self.Name, _ = v.(string)
+		case "name_description":
+			self.Description, _ = v.(string)
+		case "power_state":
+			self.PowerState, _ = v.(string)
+		}
+	}
+
+	self.IsVM = !self.IsTemplate && !self.IsControlDomain
+	self.Record = record
+
+	return record, nil
+}
 
 func (self *VM) Clone(name_label string) (new_instance *VM, err error) {
 	new_instance = new(VM)
@@ -240,6 +285,8 @@ func (self *VM) GetPowerState() (state string, err error) {
 		return "", err
 	}
 	state = result.Value.(string)
+
+	self.PowerState = state
 	return state, nil
 }
 
