@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/nilshell/xmlrpc"
 )
@@ -44,12 +45,36 @@ func (client *XenAPIClient) Login() (err error) {
 	params[1] = client.Password
 
 	err = client.RPCCall(&result, "session.login_with_password", params)
-	if err == nil {
-		// err might not be set properly, so check the reference
-		if result["Value"] == nil {
-			return errors.New("Invalid credentials supplied")
+	if err != nil {
+		return err
+	}
+	if result["Status"] == "Failure" {
+		errDesc, ok := result["ErrorDescription"].([]interface{})
+		if ok {
+			switch errDesc[0] {
+			case "AUTH_IS_DISABLED":
+				return errors.New("External auth is disabled")
+			case "AUTH_SERVICE_ERROR":
+				return errors.New("Error querying external directory service")
+			case "HOST_IS_SLAVE":
+				return errors.New("Host is a slave")
+			case "PERMISSION_DENIED":
+				return errors.New("User has no roles for pool")
+			case "SESSION_AUTHENTICATION_FAILED":
+				return errors.New("Invalid credentials supplied")
+			case "SESSION_INVALID":
+				return errors.New("Unable to obtain login session")
+			default:
+				return errors.New("Login failure")
+			}
 		}
 	}
+
+	// err might not be set properly, so check the reference
+	if result["Value"] == nil {
+		return errors.New("No value returned")
+	}
+
 	client.Session = result["Value"]
 	return err
 }
