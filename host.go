@@ -30,6 +30,16 @@ func (self *Host) GetAddress() (address string, err error) {
 	return address, nil
 }
 
+func (self *Host) GetHostname() (hostname string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "host.get_hostname", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	hostname = result.Value.(string)
+	return hostname, nil
+}
+
 func (self *Host) GetNameLabel() (nameLabel string, err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "host.get_name_label", self.Ref)
