@@ -49,24 +49,8 @@ func (client *XenAPIClient) Login() (err error) {
 		return err
 	}
 	if result["Status"] == "Failure" {
-		errDesc, ok := result["ErrorDescription"].([]interface{})
-		if ok {
-			switch errDesc[0] {
-			case "AUTH_IS_DISABLED":
-				return errors.New("External auth is disabled")
-			case "AUTH_SERVICE_ERROR":
-				return errors.New("Error querying external directory service")
-			case "HOST_IS_SLAVE":
-				return errors.New("Host is a slave")
-			case "PERMISSION_DENIED":
-				return errors.New("User has no roles for pool")
-			case "SESSION_AUTHENTICATION_FAILED":
-				return errors.New("Invalid credentials supplied")
-			case "SESSION_INVALID":
-				return errors.New("Unable to obtain login session")
-			default:
-				return errors.New("Login failure")
-			}
+		if errDesc, ok := result["ErrorDescription"].([]interface{}); ok {
+			return fmt.Errorf("%v %v", errDesc[0], errDesc[1])
 		}
 	}
 
