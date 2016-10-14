@@ -30,6 +30,16 @@ func (self *Host) GetAddress() (address string, err error) {
 	return address, nil
 }
 
+func (self *Host) GetNameLabel() (nameLabel string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "host.get_name_label", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	nameLabel = result.Value.(string)
+	return nameLabel, nil
+}
+
 func (self *Host) GetSoftwareVersion() (versions map[string]interface{}, err error) {
 	versions = make(map[string]interface{})
 
