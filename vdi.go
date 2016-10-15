@@ -4,7 +4,9 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
+	"github.com/nilshell/xmlrpc"
 )
 
 type VDI XenAPIObject
@@ -17,6 +19,19 @@ const (
 	CD
 	Floppy
 )
+
+func (self *VDI) GetRecord() (record map[string]interface{}, err error) {
+	record = make(map[string]interface{})
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VDI.get_record", self.Ref)
+	if err != nil {
+		return record, err
+	}
+	for k, v := range result.Value.(xmlrpc.Struct) {
+		record[k] = v
+	}
+	return record, nil
+}
 
 func (self *VDI) GetUuid() (vdi_uuid string, err error) {
 	result := APIResult{}

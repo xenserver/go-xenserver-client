@@ -18,6 +18,16 @@ func (self *Pool) GetMaster() (host *Host, err error) {
 	return host, nil
 }
 
+func (self *Pool) GetNameLabel() (nameLabel string, err error) {
+	result := &APIResult{}
+	err = self.Client.APICall(result, "pool.get_name_label", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	nameLabel = result.Value.(string)
+	return nameLabel, nil
+}
+
 func (self *Pool) GetRecord() (record map[string]interface{}, err error) {
 	record = make(map[string]interface{})
 	result := APIResult{}

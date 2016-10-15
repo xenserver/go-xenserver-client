@@ -2,8 +2,9 @@ package client
 
 import (
 	"fmt"
-	"github.com/nilshell/xmlrpc"
 	"strconv"
+
+	"github.com/nilshell/xmlrpc"
 )
 
 type VM XenAPIObject
@@ -123,6 +124,15 @@ func (self *VM) CleanShutdown() (err error) {
 func (self *VM) HardShutdown() (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.hard_shutdown", self.Ref)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VM) Shutdown() (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.shutdown", self.Ref)
 	if err != nil {
 		return err
 	}
@@ -598,6 +608,19 @@ func (self *VM) SetOtherConfig(other_config map[string]string) (err error) {
 		return err
 	}
 	return
+}
+
+func (self *VM) GetRecord() (record map[string]interface{}, err error) {
+	record = make(map[string]interface{})
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_record", self.Ref)
+	if err != nil {
+		return record, err
+	}
+	for k, v := range result.Value.(xmlrpc.Struct) {
+		record[k] = v
+	}
+	return record, nil
 }
 
 func (self *VM) SetNameLabel(name_label string) (err error) {
