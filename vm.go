@@ -130,6 +130,15 @@ func (self *VM) HardShutdown() (err error) {
 	return
 }
 
+func (self *VM) Shutdown() (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.shutdown", self.Ref)
+	if err != nil {
+		return err
+	}
+	return
+}
+
 func (self *VM) CleanReboot() (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.clean_reboot", self.Ref)
