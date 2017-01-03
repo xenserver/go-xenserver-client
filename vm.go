@@ -8,6 +8,16 @@ import (
 
 type VM XenAPIObject
 
+type VMConfig struct {
+	Name_label string // new vm name
+	GuestOS string // name_label of the template to be cloned
+	Other_config map[string]string
+	CPUMax uint
+	MemoryMax uint
+	Image string
+}
+
+
 func (self *VM) Clone(name_label string) (new_instance *VM, err error) {
 	new_instance = new(VM)
 
@@ -150,6 +160,15 @@ func (self *VM) HardReboot() (err error) {
 func (self *VM) Unpause() (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.unpause", self.Ref)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VM) Pause() (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.pause", self.Ref)
 	if err != nil {
 		return err
 	}

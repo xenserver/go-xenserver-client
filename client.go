@@ -392,3 +392,93 @@ func NewXenAPIClient(host, username, password string) (client XenAPIClient) {
 	client.RPC, _ = xmlrpc.NewClient(client.Url, nil)
 	return
 }
+
+//todo: check if logout is possible
+func (client *XenAPIClient) Close() error {
+	return client.RPC.Close()
+}
+
+func (client *XenAPIClient) CreateVbd(vm_ref, vdi_ref, vbdType, mode, userdevice string, empty, bootable bool) (*VBD, error) {
+	vbd := new(VBD)
+	oc := make(xmlrpc.Struct)
+	vbd_rec := make(xmlrpc.Struct)
+	vbd_rec["other_config"] = oc
+	vbd_rec["status_code"] = "0"
+	vbd_rec["VM"] = vm_ref
+	vbd_rec["unplugabble"] = "0"
+	vbd_rec["VDI"] = vdi_ref //empty for CDs
+	vbd_rec["qos_algorithm_type"] = ""
+	vbd_rec["bootable"] = bootable
+	vbd_rec["storage_lock"] = "0"
+	vbd_rec["currently_attached"] = "0"
+	vbd_rec["mode"] = mode
+	vbd_rec["userdevice"] = userdevice
+	vbd_rec["qos_algorithm_params"] = oc
+	vbd_rec["type"] = vbdType //CD or Disk
+	if vbdType == "CD" {
+		vbd_rec["empty"] = false
+	} else {
+		vbd_rec["empty"] = true
+	}
+	//vbd_rec["empty"] = empty  //false for Disk, true for CD
+	result := APIResult{}
+	err := client.APICall(&result, "VBD.create", vbd_rec)
+	if err != nil {
+		return nil, fmt.Errorf("apicall error %+v", err)
+	}
+
+	vbd.Ref = result.Value.(string)
+	vbd.Client = &XenAPIClient{}
+	return vbd, nil
+}
+
+func (client *XenAPIClient) CreateVM(config VMConfig) (new_instance *VM, err error) {
+	templates, err := client.GetVMByNameLabel(config.GuestOS)
+	if err != nil || len(templates) == 0 {
+		return nil, fmt.Errorf(`no template exist for guestOS "%s". %+v`, config.GuestOS, err)
+	}
+
+	clone := new(VM)
+	clone.Client = client
+	clone.Ref = templates[0].Ref
+
+	if new_instance, err = clone.Clone(config.Name_label); err != nil {
+		return nil, err
+	}
+
+	if config.Other_config != nil {
+		if err = new_instance.SetOtherConfig(config.Other_config); err != nil {
+			return nil, err
+		}
+	}
+
+
+	if err = new_instance.Provision(); err != nil {
+		return nil, err
+	}
+
+
+
+	if err = new_instance.SetVCpuMax(config.CPUMax); err != nil {
+		return nil, err
+	}
+
+	//todo: check if insert is necessary
+	// creates CDRom for VM
+	if config.Image != "" {
+		if vdis, err := client.GetVdiByNameLabel(config.Image); err == nil {
+			if len(vdis) == 0 {
+				return nil, fmt.Errorf(`image "%s" is invalid`, config.Image)
+			}
+			if _, err = client.CreateVbd(new_instance.Ref, vdis[0].Ref, "CD", "RO", "2", true, true); err != nil {
+				return nil, err
+			}
+
+		} else {
+			return nil, err
+		}
+	}
+
+
+	return new_instance, nil
+}
