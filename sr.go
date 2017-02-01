@@ -7,6 +7,7 @@ import (
 
 type SR XenAPIObject
 
+
 func (self *SR) GetUuid() (uuid string, err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "SR.get_uuid", self.Ref)
@@ -17,12 +18,13 @@ func (self *SR) GetUuid() (uuid string, err error) {
 	return uuid, nil
 }
 
-func (self *SR) CreateVdi(name_label string, size int64) (vdi *VDI, err error) {
-	vdi = new(VDI)
+func (self *SR) CreateVdi(name_label, sr_ref string, size int64) (vdi_uuid string, err error) {
+	vdi := new(VDI)
 
 	vdi_rec := make(xmlrpc.Struct)
 	vdi_rec["name_label"] = name_label
-	vdi_rec["SR"] = self.Ref
+	vdi_rec["name_description"] = name_label
+	vdi_rec["SR"] = sr_ref
 	vdi_rec["virtual_size"] = fmt.Sprintf("%d", size)
 	vdi_rec["type"] = "user"
 	vdi_rec["sharable"] = false
@@ -31,15 +33,19 @@ func (self *SR) CreateVdi(name_label string, size int64) (vdi *VDI, err error) {
 	oc := make(xmlrpc.Struct)
 	oc["temp"] = "temp"
 	vdi_rec["other_config"] = oc
+	vdi_rec["xenstore_data"] = oc
+
+	vdi.Client = self.Client
 
 	result := APIResult{}
-	err = self.Client.APICall(&result, "VDI.create", vdi_rec)
-	if err != nil {
-		return nil, err
-	}
 
+	err = self.Client.APICall(&result, "VDI.create", vdi_rec)
+
+	if err != nil {
+		return "", err
+	}
 	vdi.Ref = result.Value.(string)
-	vdi.Client = self.Client
+	vdi_uuid, err = vdi.GetUuid()
 
 	return
 }

@@ -34,7 +34,7 @@ func (self *VBD) GetVDI() (vdi *VDI, err error) {
 
 func (self *VBD) Eject() (err error) {
 	result := APIResult{}
-	err = self.Client.APICall(&result, "VBD.eject", self.Ref)
+	err = self.Client.APICall(&result, "Async.VBD.eject", self.Ref)
 	if err != nil {
 		return err
 	}
@@ -57,4 +57,55 @@ func (self *VBD) Destroy() (err error) {
 		return err
 	}
 	return nil
+}
+
+func (self *VBD) Plug() (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "Async.VBD.plug", self.Ref)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VBD) GetUuid() (vbd_uuid string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VBD.get_uuid", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	vbd_uuid = result.Value.(string)
+	return vbd_uuid, nil
+}
+
+func (self *VBD) Insert(vdiRef string) (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "Async.VBD.insert", self.Ref, vdiRef)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (self *VBD) GetType() (vbd_type string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VBD.get_type", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	vbd_type = result.Value.(string)
+	return vbd_type, nil
+}
+
+func (self *VBD) GetVM() (vm *VM, err error) {
+	vbd_rec, err := self.GetRecord()
+	if err != nil {
+		return nil, err
+	}
+
+	vm = new(VM)
+	vm.Ref = vbd_rec["VM"].(string)
+	vm.Client = self.Client
+
+	return vm, nil
 }

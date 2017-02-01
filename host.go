@@ -44,3 +44,37 @@ func (self *Host) GetSoftwareVersion() (versions map[string]interface{}, err err
 	}
 	return
 }
+
+func (self *Host) GetCPUInfo() (cpus map[string]interface{}, err error) {
+	cpus = make(map[string]interface{})
+
+	result := APIResult{}
+	err = self.Client.APICall(&result, "host.get_cpu_info", self.Ref)
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range result.Value.(xmlrpc.Struct) {
+		cpus[k] = v.(string)
+	}
+	return
+}
+
+func (self *Host) GetCPUs() (hcpus []*Host_CPU, err error) {
+	hcpus = make([]*Host_CPU, 0)
+	result := APIResult{}
+	err = self.Client.APICall(&result, "host.get_host_CPUs", self.Ref)
+	if err != nil {
+		return hcpus, err
+	}
+
+	for _, elem := range result.Value.([]interface{}) {
+		vm := new(Host_CPU)
+		vm.Ref = elem.(string)
+		vm.Client = self.Client
+		hcpus = append(hcpus, vm)
+	}
+
+	return hcpus, nil
+}
+//todo: get utilisation, get_host_CPUs

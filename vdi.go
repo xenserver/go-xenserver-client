@@ -82,6 +82,16 @@ func (self *VDI) SetNameLabel(name_label string) (err error) {
 	return
 }
 
+func (self *VDI) GetNameLabel() (name_label string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VDI.get_name_label", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	name_label = result.Value.(string)
+	return
+}
+
 func (self *VDI) SetReadOnly(value bool) (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VDI.set_read_only", self.Ref, value)
