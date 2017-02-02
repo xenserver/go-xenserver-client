@@ -20,6 +20,26 @@ func (self *Host) CallPlugin(plugin, method string, params map[string]string) (r
 	return
 }
 
+func (self *Host) GetUUID() (uuid string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "host.get_uuid", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	uuid = result.Value.(string)
+	return
+}
+
+func (self *Host) GetNameLabel() (name_label string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "host.get_name_label", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	name_label = result.Value.(string)
+	return
+}
+
 func (self *Host) GetAddress() (address string, err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "host.get_address", self.Ref)
@@ -27,7 +47,7 @@ func (self *Host) GetAddress() (address string, err error) {
 		return "", err
 	}
 	address = result.Value.(string)
-	return address, nil
+	return
 }
 
 func (self *Host) GetSoftwareVersion() (versions map[string]interface{}, err error) {
@@ -97,8 +117,7 @@ func (self *Host) GetHostMetric() (metrics *HostMetrics, err error) {
 	}
 	metrics.Client = self.Client
 	metrics.Ref = result.Value.(string)
-
-	return metrics, nil
+	return
 }
 
 func (self *Host) GetPIFs() (pifs []PIF, err error) {
@@ -114,6 +133,21 @@ func (self *Host) GetPIFs() (pifs []PIF, err error) {
 		pif.Client = self.Client
 		pifs = append(pifs, pif)
 	}
+	return
+}
 
-	return pifs, nil
+func (self *Host) GetPBDs() (pbd []PBD, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "host.get_PBDs", self.Ref)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, elem := range result.Value.([]interface{}) {
+		pbd_instance := PBD{}
+		pbd_instance.Ref = elem.(string)
+		pbd_instance.Client = self.Client
+		pbd = append(pbd, pbd_instance)
+	}
+	return
 }

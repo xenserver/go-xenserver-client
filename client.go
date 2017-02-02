@@ -308,14 +308,26 @@ func (client *XenAPIClient) GetNetworkByUuid(network_uuid string) (network *Netw
 	return
 }
 
-func (client *XenAPIClient) GetVIFByUuid(vfi_uuid string) (vif *VIF, err error) {
+func (client *XenAPIClient) GetVIFByUuid(vif_uuid string) (vif *VIF, err error) {
 	vif = client.NewVIF()
 	result := APIResult{}
-	err = client.APICall(&result, "VIF.get_by_uuid", vfi_uuid)
+	err = client.APICall(&result, "VIF.get_by_uuid", vif_uuid)
 	if err != nil {
 		return nil, err
 	}
 	vif.Ref = result.Value.(string)
+	return
+}
+
+func (client *XenAPIClient) GetPIFByUuid(pif_uuid string) (pif *PIF, err error) {
+	pif = new(PIF)
+	result := APIResult{}
+	err = client.APICall(&result, "PIF.get_by_uuid", pif_uuid)
+	if err != nil {
+		return nil, err
+	}
+	pif.Ref = result.Value.(string)
+	pif.Client = client
 	return
 }
 
@@ -456,6 +468,7 @@ func NewXenAPIClient(host, username, password string) (client XenAPIClient) {
 	return
 }
 
+//todo: check if logout is possible
 func (client *XenAPIClient) Close() error {
 	return client.RPC.Close()
 }
@@ -480,7 +493,7 @@ func (client *XenAPIClient) CreateVbd(vm_ref, vdi_ref, vbdType, mode string, boo
 	vm.Ref = vm_ref
 	vbds, err := vm.GetVBDs()
 	if err != nil {
-		return nil ,err
+		return nil, err
 	}
 
 	vbd_rec["userdevice"] = fmt.Sprintf("%d", len(vbds))
@@ -488,7 +501,7 @@ func (client *XenAPIClient) CreateVbd(vm_ref, vdi_ref, vbdType, mode string, boo
 	vbd_rec["type"] = vbdType //CD or Disk
 	if vbdType == "CD" {
 		vbd_rec["empty"] = true
-	}else if vbdType == "Disk"{
+	} else if vbdType == "Disk" {
 		vbd_rec["empty"] = false
 	} else {
 		vbd_rec["empty"] = true
@@ -539,7 +552,6 @@ func (client *XenAPIClient) CreateVM(config VMConfig) (new_instance *VM, err err
 	if err = new_instance.Provision(); err != nil {
 		return nil, err
 	}
-
 
 	return new_instance, nil
 }

@@ -92,12 +92,51 @@ func (self *VDI) GetNameLabel() (name_label string, err error) {
 	return
 }
 
+func (self *VDI) GetNameDescription() (description string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VDI.get_name_description", self.Ref)
+	if err != nil {
+		return "", err
+	}
+
+	if result.Value != nil {
+		description = result.Value.(string)
+	}
+	return
+}
+
 func (self *VDI) SetReadOnly(value bool) (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VDI.set_read_only", self.Ref, value)
 	if err != nil {
 		return err
 	}
+	return
+}
+
+func (self *VDI) GetSharable() (value bool, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VDI.get_sharable", self.Ref)
+	if err != nil {
+		return false, err
+	}
+	if result.Value != nil{
+		value = result.Value.(bool)
+	}
+
+	return
+}
+
+func (self *VDI) GetLocation() (location string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VDI.get_location", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	if result.Value != nil{
+		location = result.Value.(string)
+	}
+
 	return
 }
 
