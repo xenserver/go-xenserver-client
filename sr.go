@@ -7,7 +7,6 @@ import (
 
 type SR XenAPIObject
 
-
 func (self *SR) GetUuid() (uuid string, err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "SR.get_uuid", self.Ref)
@@ -47,5 +46,5 @@ func (self *SR) CreateVdi(name_label, sr_ref string, size int64) (vdi_uuid strin
 	vdi.Ref = result.Value.(string)
 	vdi_uuid, err = vdi.GetUuid()
 
-	return
+	return "", nil
 }

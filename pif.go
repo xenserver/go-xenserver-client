@@ -18,3 +18,26 @@ func (self *PIF) GetRecord() (record map[string]interface{}, err error) {
 	}
 	return record, nil
 }
+
+func (self *PIF) GetIP() (ip string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "PIF.get_IP", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	if result.Value == nil {
+		return "", nil
+	}
+	ip = result.Value.(string)
+	return ip, nil
+}
+
+func (self *PIF) GetMAC() (mac string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "PIF.get_MAC", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	mac = result.Value.(string)
+	return mac, nil
+}

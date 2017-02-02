@@ -77,4 +77,43 @@ func (self *Host) GetCPUs() (hcpus []*Host_CPU, err error) {
 
 	return hcpus, nil
 }
-//todo: get utilisation, get_host_CPUs
+
+func (self *Host) GetResidentVMs() (count int, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "host.get_resident_VMs", self.Ref)
+	if err != nil {
+		return -1, err
+	}
+	count = len(result.Value.([]interface{}))
+	return count, nil
+}
+
+func (self *Host) GetHostMetric() (metrics *HostMetrics, err error) {
+	metrics = &HostMetrics{}
+	result := APIResult{}
+	err = self.Client.APICall(&result, "host.get_metrics", self.Ref)
+	if err != nil {
+		return nil, err
+	}
+	metrics.Client = self.Client
+	metrics.Ref = result.Value.(string)
+
+	return metrics, nil
+}
+
+func (self *Host) GetPIFs() (pifs []PIF, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "host.get_PIFs", self.Ref)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, elem := range result.Value.([]interface{}) {
+		pif := PIF{}
+		pif.Ref = elem.(string)
+		pif.Client = self.Client
+		pifs = append(pifs, pif)
+	}
+
+	return pifs, nil
+}

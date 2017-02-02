@@ -16,5 +16,5 @@ func (self *VM_Guest_Metrics) GetNetworks() (ipMap map[string]string, err error)
 	for k, v := range result.Value.(xmlrpc.Struct) {
 		ipMap[k] = v.(string)
 	}
-	return ipMap, nil
+	return
 }

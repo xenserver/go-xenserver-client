@@ -5,10 +5,7 @@ type VIF XenAPIObject
 func (self *VIF) Destroy() (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VIF.destroy", self.Ref)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (self *VIF) GetNetwork() (network *Network, err error) {
@@ -23,7 +20,6 @@ func (self *VIF) GetNetwork() (network *Network, err error) {
 	network.Ref = result.Value.(string)
 	network.Client = self.Client
 	return
-
 }
 
 func (self *VIF) GetUuid() (vif_uuid string, err error) {
@@ -33,7 +29,7 @@ func (self *VIF) GetUuid() (vif_uuid string, err error) {
 		return "", err
 	}
 	vif_uuid = result.Value.(string)
-	return vif_uuid, nil
+	return
 }
 
 func (self *VIF) GetMAC() (vif_mac string, err error) {
@@ -43,7 +39,7 @@ func (self *VIF) GetMAC() (vif_mac string, err error) {
 		return "", err
 	}
 	vif_mac = result.Value.(string)
-	return vif_mac, nil
+	return
 }
 
 func (self *VIF) Plug() (err error) {
@@ -52,14 +48,11 @@ func (self *VIF) Plug() (err error) {
 	if err != nil {
 		return err
 	}
-	return
+	return nil
 }
 
 func (self *VIF) Unplug() (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VIF.unplug", self.Ref)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }

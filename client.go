@@ -456,7 +456,6 @@ func NewXenAPIClient(host, username, password string) (client XenAPIClient) {
 	return
 }
 
-//todo: check if logout is possible
 func (client *XenAPIClient) Close() error {
 	return client.RPC.Close()
 }
@@ -504,34 +503,6 @@ func (client *XenAPIClient) CreateVbd(vm_ref, vdi_ref, vbdType, mode string, boo
 	vbd.Ref = result.Value.(string)
 	return vbd, nil
 }
-
-/*func (client *XenAPIClient) CreateVdi(name_label, sr_ref string, size int64) (vdi_uuid string, err error) {
-
-	vdi_rec := make(xmlrpc.Struct)
-	vdi_rec["name_label"] = name_label
-	vdi_rec["name_description"] = name_label
-	vdi_rec["SR"] = sr_ref
-	vdi_rec["virtual_size"] = fmt.Sprintf("%d", size)
-	vdi_rec["type"] = "user"
-	vdi_rec["sharable"] = false
-	vdi_rec["read_only"] = false
-
-	oc := make(xmlrpc.Struct)
-	oc["temp"] = "temp"
-	vdi_rec["other_config"] = oc
-	vdi_rec["xenstore_data"] = oc
-
-	result := APIResult{}
-
-	err = client.APICall(&result, "VDI.create", vdi_rec)
-	if err != nil {
-		return "", err
-	}
-
-//	vdi_ref = result.Value.(string)
-
-	return
-}*/
 
 func (client *XenAPIClient) GetVBDByUuid(vbd_uuid string) (vbd *VBD, err error) {
 	vbd = new(VBD)

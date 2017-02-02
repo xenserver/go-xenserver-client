@@ -9,14 +9,13 @@ import (
 type VM XenAPIObject
 
 type VMConfig struct {
-	Name_label string // new vm name
-	GuestOS string // name_label of the template to be cloned
+	Name_label   string
+	GuestOS      string
 	Other_config map[string]string
-	CPUMax uint
-	MemoryMax uint
-	Image string
+	CPUMax       uint
+	MemoryMax    uint
+	Image        string
 }
-
 
 func (self *VM) Clone(name_label string) (new_instance *VM, err error) {
 	new_instance = new(VM)
@@ -214,7 +213,7 @@ func (self *VM) GetHVMBootOrder() (bootOrder string, err error) {
 		return
 	}
 
-	bootOrder =""
+	bootOrder = ""
 
 	return
 }
@@ -442,7 +441,6 @@ func (self *VM) GetStaticMemoryMax() (memory_max int, err error) {
 }
 
 func (self *VM) ConnectVdi(vdi *VDI, vdiType VDIType, userdevice string) (err error) {
-
 	// 1. Create a VBD
 	if userdevice == "" {
 		userdevice = "autodetect"
@@ -487,17 +485,7 @@ func (self *VM) ConnectVdi(vdi *VDI, vdiType VDIType, userdevice string) (err er
 	result = APIResult{}
 	err = self.Client.APICall(&result, "VBD.get_uuid", vbd_ref)
 
-	/*
-	   // 2. Plug VBD (Non need - the VM hasn't booted.
-	   // @todo - check VM state
-	   result = APIResult{}
-	   err = self.Client.APICall(&result, "VBD.plug", vbd_ref)
-
-	   if err != nil {
-	       return err
-	   }
-	*/
-	return
+	return nil
 }
 
 func (self *VM) DisconnectVdi(vdi *VDI) error {
@@ -540,7 +528,7 @@ func (self *VM) SetPlatform(params map[string]string) (err error) {
 	if err != nil {
 		return err
 	}
-	return
+	return nil
 }
 
 func (self *VM) ConnectNetwork(network *Network, device string) (vif *VIF, err error) {
@@ -568,22 +556,15 @@ func (self *VM) ConnectNetwork(network *Network, device string) (vif *VIF, err e
 	vif = new(VIF)
 	vif.Ref = result.Value.(string)
 	vif.Client = self.Client
-
-	return vif, nil
+	return
 }
-
-//      Setters
 
 func (self *VM) SetVCpuMax(vcpus uint) (err error) {
 	result := APIResult{}
 	strVcpu := fmt.Sprintf("%d", vcpus)
 
 	err = self.Client.APICall(&result, "VM.set_VCPUs_max", self.Ref, strVcpu)
-
-	if err != nil {
-		return err
-	}
-	return
+	return err
 }
 
 func (self *VM) GetVCpuMax() (vcpus int, err error) {
@@ -596,7 +577,6 @@ func (self *VM) GetVCpuMax() (vcpus int, err error) {
 	}
 	vcpus_ := result.Value.(string)
 	vcpus, err = strconv.Atoi(vcpus_)
-
 	return
 }
 
@@ -605,20 +585,13 @@ func (self *VM) SetVCpuAtStartup(vcpus uint) (err error) {
 	strVcpu := fmt.Sprintf("%d", vcpus)
 
 	err = self.Client.APICall(&result, "VM.set_VCPUs_at_startup", self.Ref, strVcpu)
-
-	if err != nil {
-		return err
-	}
-	return
+	return err
 }
 
 func (self *VM) SetIsATemplate(is_a_template bool) (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.set_is_a_template", self.Ref, is_a_template)
-	if err != nil {
-		return err
-	}
-	return
+	return err
 }
 
 func (self *VM) GetIsATemplate() (is_template bool, err error) {
@@ -653,28 +626,19 @@ func (self *VM) SetOtherConfig(other_config map[string]string) (err error) {
 		other_config_rec[key] = value
 	}
 	err = self.Client.APICall(&result, "VM.set_other_config", self.Ref, other_config_rec)
-	if err != nil {
-		return err
-	}
-	return
+	return err
 }
 
 func (self *VM) SetNameLabel(name_label string) (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.set_name_label", self.Ref, name_label)
-	if err != nil {
-		return err
-	}
-	return
+	return err
 }
 
 func (self *VM) SetDescription(description string) (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.set_name_description", self.Ref, description)
-	if err != nil {
-		return err
-	}
-	return
+	return err
 }
 
 func (self *VM) GetDescription() (description string, err error) {
@@ -684,7 +648,7 @@ func (self *VM) GetDescription() (description string, err error) {
 		return "", err
 	}
 	description = ""
-	if result.Value!=nil{
+	if result.Value != nil {
 		description = result.Value.(string)
 	}
 
