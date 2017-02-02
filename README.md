@@ -18,7 +18,7 @@ And of course, contributions are most welcome!
 
 
 
-You can find XenAPI Reference here to add missing functions
+XenAPI Reference to add missing functions
 -----------
 http://xapi-project.github.io/xen-api/index.html
 
