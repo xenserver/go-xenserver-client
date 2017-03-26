@@ -2,15 +2,16 @@ package client
 
 import (
 	"fmt"
-	"github.com/nilshell/xmlrpc"
 	"strconv"
+
+	"github.com/nilshell/xmlrpc"
 )
 
 type VM XenAPIObject
 
 type VMConfig struct {
-	Name_label   string
-	GuestOS      string
+	Name_label   string // new vm name
+	GuestOS      string // name_label of the template to be cloned
 	Other_config map[string]string
 	CPUMax       uint
 	MemoryMax    uint
@@ -131,7 +132,7 @@ func (self *VM) CleanShutdown() (err error) {
 
 func (self *VM) HardShutdown() (err error) {
 	result := APIResult{}
-	err = self.Client.APICall(&result, "VM.hard_shutdown", self.Ref)
+	err = self.Client.APICall(&result, "Async.VM.hard_shutdown", self.Ref)
 	if err != nil {
 		return err
 	}
@@ -286,8 +287,8 @@ func (self *VM) GetUuid() (uuid string, err error) {
 	return uuid, nil
 }
 
-func (self *VM) GetVBDs() (vbds []VBD, err error) {
-	vbds = make([]VBD, 0)
+func (self *VM) GetVBDs() (vbds []*VBD, err error) {
+	vbds = make([]*VBD, 0)
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.get_VBDs", self.Ref)
 	if err != nil {
@@ -297,10 +298,27 @@ func (self *VM) GetVBDs() (vbds []VBD, err error) {
 		vbd := VBD{}
 		vbd.Ref = elem.(string)
 		vbd.Client = self.Client
-		vbds = append(vbds, vbd)
+		vbds = append(vbds, &vbd)
 	}
 
 	return vbds, nil
+}
+
+func (self *VM) GetConsoles() (consoles []*Console, err error) {
+	consoles = make([]*Console, 0)
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_consoles", self.Ref)
+	if err != nil {
+		return consoles, err
+	}
+	for _, elem := range result.Value.([]interface{}) {
+		console := Console{}
+		console.Ref = elem.(string)
+		console.Client = self.Client
+		consoles = append(consoles, &console)
+	}
+
+	return consoles, nil
 }
 
 func (self *VM) GetAllowedVBDDevices() (devices []string, err error) {
@@ -352,30 +370,13 @@ func (self *VM) GetAllowedVIFDevices() (devices []string, err error) {
 	return devices, nil
 }
 
-func (self *VM) GetDisks() (vdis []*VDI, err error) {
+func (self *VM) GetDisks() (vbds []*VBD, err error) {
 	// Return just data disks (non-isos)
-	vdis = make([]*VDI, 0)
-	vbds, err := self.GetVBDs()
+	vbds, err = self.GetVBDs()
 	if err != nil {
 		return nil, err
 	}
-
-	for _, vbd := range vbds {
-		rec, err := vbd.GetRecord()
-		if err != nil {
-			return nil, err
-		}
-		if rec["type"] == "Disk" {
-
-			vdi, err := vbd.GetVDI()
-			if err != nil {
-				return nil, err
-			}
-			vdis = append(vdis, vdi)
-
-		}
-	}
-	return vdis, nil
+	return vbds, nil
 }
 
 func (self *VM) GetVMGuestMetrics() (vm_guest_metrics *VM_Guest_Metrics, err error) {
@@ -441,6 +442,7 @@ func (self *VM) GetStaticMemoryMax() (memory_max int, err error) {
 }
 
 func (self *VM) ConnectVdi(vdi *VDI, vdiType VDIType, userdevice string) (err error) {
+
 	// 1. Create a VBD
 	if userdevice == "" {
 		userdevice = "autodetect"
@@ -484,8 +486,7 @@ func (self *VM) ConnectVdi(vdi *VDI, vdiType VDIType, userdevice string) (err er
 
 	result = APIResult{}
 	err = self.Client.APICall(&result, "VBD.get_uuid", vbd_ref)
-
-	return nil
+	return
 }
 
 func (self *VM) DisconnectVdi(vdi *VDI) error {
@@ -528,7 +529,7 @@ func (self *VM) SetPlatform(params map[string]string) (err error) {
 	if err != nil {
 		return err
 	}
-	return nil
+	return
 }
 
 func (self *VM) ConnectNetwork(network *Network, device string) (vif *VIF, err error) {
@@ -556,15 +557,22 @@ func (self *VM) ConnectNetwork(network *Network, device string) (vif *VIF, err e
 	vif = new(VIF)
 	vif.Ref = result.Value.(string)
 	vif.Client = self.Client
-	return
+
+	return vif, nil
 }
+
+//      Setters
 
 func (self *VM) SetVCpuMax(vcpus uint) (err error) {
 	result := APIResult{}
 	strVcpu := fmt.Sprintf("%d", vcpus)
 
 	err = self.Client.APICall(&result, "VM.set_VCPUs_max", self.Ref, strVcpu)
-	return err
+
+	if err != nil {
+		return err
+	}
+	return
 }
 
 func (self *VM) GetVCpuMax() (vcpus int, err error) {
@@ -577,6 +585,7 @@ func (self *VM) GetVCpuMax() (vcpus int, err error) {
 	}
 	vcpus_ := result.Value.(string)
 	vcpus, err = strconv.Atoi(vcpus_)
+
 	return
 }
 
@@ -585,13 +594,20 @@ func (self *VM) SetVCpuAtStartup(vcpus uint) (err error) {
 	strVcpu := fmt.Sprintf("%d", vcpus)
 
 	err = self.Client.APICall(&result, "VM.set_VCPUs_at_startup", self.Ref, strVcpu)
-	return err
+
+	if err != nil {
+		return err
+	}
+	return
 }
 
 func (self *VM) SetIsATemplate(is_a_template bool) (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.set_is_a_template", self.Ref, is_a_template)
-	return err
+	if err != nil {
+		return err
+	}
+	return
 }
 
 func (self *VM) GetIsATemplate() (is_template bool, err error) {
@@ -626,19 +642,28 @@ func (self *VM) SetOtherConfig(other_config map[string]string) (err error) {
 		other_config_rec[key] = value
 	}
 	err = self.Client.APICall(&result, "VM.set_other_config", self.Ref, other_config_rec)
-	return err
+	if err != nil {
+		return err
+	}
+	return
 }
 
 func (self *VM) SetNameLabel(name_label string) (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.set_name_label", self.Ref, name_label)
-	return err
+	if err != nil {
+		return err
+	}
+	return
 }
 
 func (self *VM) SetDescription(description string) (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.set_name_description", self.Ref, description)
-	return err
+	if err != nil {
+		return err
+	}
+	return
 }
 
 func (self *VM) GetDescription() (description string, err error) {

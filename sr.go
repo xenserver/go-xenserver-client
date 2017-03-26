@@ -22,7 +22,7 @@ func (self *SR) CreateVdi(name_label, sr_ref string, size int64) (vdi_uuid strin
 
 	vdi_rec := make(xmlrpc.Struct)
 	vdi_rec["name_label"] = name_label
-	vdi_rec["name_description"] = name_label
+	vdi_rec["name_description"] = "VirtualHardDisk"
 	vdi_rec["SR"] = sr_ref
 	vdi_rec["virtual_size"] = fmt.Sprintf("%d", size)
 	vdi_rec["type"] = "user"

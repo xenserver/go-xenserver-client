@@ -1,12 +1,12 @@
 package client
 
 import (
-	"fmt"
 	"github.com/nilshell/xmlrpc"
 	"strconv"
+	"fmt"
 )
 
-type Network XenAPIObject
+type 	Network XenAPIObject
 
 func (self *Network) GetAssignedIPs() (ipMap map[string]string, err error) {
 	ipMap = make(map[string]string, 0)
@@ -73,9 +73,9 @@ func (self *Network) GetUuid() (uuid string, err error) {
 	return
 }
 
-func (self *Network) CreateVIF(vm_ref, mac string, device int) (vif *VIF, err error) {
+func (self *Network) CreateVIF(vm_ref, mac string, device int) (vif *VIF, err error){
 
-	if err != nil {
+	if err!=nil{
 		return nil, err
 	}
 
@@ -91,6 +91,7 @@ func (self *Network) CreateVIF(vm_ref, mac string, device int) (vif *VIF, err er
 	vif_rec["network"] = self.Ref
 	vif_rec["VM"] = vm_ref
 	vif_rec["MAC"] = mac
+	//vif_rec["MAC"] = ""
 	vif_rec["MTU"] = "0"
 	vif_rec["other_config"] = oc
 	vif_rec["currently_attached"] = false
@@ -112,15 +113,17 @@ func (self *Network) CreateVIF(vm_ref, mac string, device int) (vif *VIF, err er
 	vif_rec["ipv6_addresses"] = make([]interface{}, 1)
 	vif_rec["ipv6_gateway"] = ""
 
+
+
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VIF.create", vif_rec)
 	if err != nil {
 		return nil, err
 	}
 	vif.Ref = ""
-	if result.Value != nil {
+	if result.Value!=nil{
 		vif.Ref = result.Value.(string)
-	} else {
+	}else{
 		return nil, fmt.Errorf("Could not get the reference of vif.")
 	}
 

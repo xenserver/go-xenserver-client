@@ -149,6 +149,19 @@ func (self *VDI) SetSharable(value bool) (err error) {
 	return
 }
 
+func (self *VDI) GetSR() (sr *SR, err error) {
+	sr = new(SR)
+
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VDI.get_SR", self.Ref)
+	if err != nil {
+		return nil, err
+	}
+	sr.Ref = result.Value.(string)
+	sr.Client = self.Client
+	return
+}
+
 // Expose a VDI using the Transfer VM
 // (Legacy VHD export)
 

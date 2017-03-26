@@ -19,5 +19,6 @@ func (self *HostMetrics) GetFreeMemory() (count string, err error) {
 		return "", err
 	}
 	count = result.Value.(string)
+
 	return count, nil
 }

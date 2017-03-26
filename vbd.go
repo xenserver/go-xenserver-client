@@ -43,7 +43,7 @@ func (self *VBD) Eject() (err error) {
 
 func (self *VBD) Unplug() (err error) {
 	result := APIResult{}
-	err = self.Client.APICall(&result, "VBD.unplug", self.Ref)
+	err = self.Client.APICall(&result, "Async.VBD.unplug", self.Ref)
 	if err != nil {
 		return err
 	}
