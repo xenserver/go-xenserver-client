@@ -120,7 +120,7 @@ func (self *VDI) GetSharable() (value bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	if result.Value != nil{
+	if result.Value != nil {
 		value = result.Value.(bool)
 	}
 
@@ -133,7 +133,7 @@ func (self *VDI) GetLocation() (location string, err error) {
 	if err != nil {
 		return "", err
 	}
-	if result.Value != nil{
+	if result.Value != nil {
 		location = result.Value.(string)
 	}
 

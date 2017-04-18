@@ -553,6 +553,5 @@ func (client *XenAPIClient) CreateVM(config VMConfig) (new_instance *VM, err err
 		return nil, err
 	}
 
-
 	return new_instance, nil
 }
