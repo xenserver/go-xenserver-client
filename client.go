@@ -54,6 +54,41 @@ func (client *XenAPIClient) Login() (err error) {
 	return err
 }
 
+func (client *XenAPIClient) NewVIF() (new_vif *VIF) {
+	new_vif = &VIF{
+		Client: client,
+	}
+	return
+}
+
+func (client *XenAPIClient) NewNetwork() (new_network *Network) {
+	new_network = &Network{
+		Client: client,
+	}
+	return
+}
+
+func (client *XenAPIClient) NewSR() (new_sr *SR) {
+	new_sr = &SR{
+		Client: client,
+	}
+	return
+}
+
+func (client *XenAPIClient) NewVBD() (new_vbd *VBD) {
+	new_vbd = &VBD{
+		Client: client,
+	}
+	return
+}
+
+func (client *XenAPIClient) NewVDI() (new_vdi *VDI) {
+	new_vdi = &VDI{
+		Client: client,
+	}
+	return
+}
+
 func (client *XenAPIClient) APICall(result *APIResult, method string, params ...interface{}) (err error) {
 	if client.Session == nil {
 		log.Errorf("no session\n")
@@ -273,6 +308,29 @@ func (client *XenAPIClient) GetNetworkByUuid(network_uuid string) (network *Netw
 	return
 }
 
+func (client *XenAPIClient) GetVIFByUuid(vif_uuid string) (vif *VIF, err error) {
+	vif = client.NewVIF()
+	result := APIResult{}
+	err = client.APICall(&result, "VIF.get_by_uuid", vif_uuid)
+	if err != nil {
+		return nil, err
+	}
+	vif.Ref = result.Value.(string)
+	return
+}
+
+func (client *XenAPIClient) GetPIFByUuid(pif_uuid string) (pif *PIF, err error) {
+	pif = new(PIF)
+	result := APIResult{}
+	err = client.APICall(&result, "PIF.get_by_uuid", pif_uuid)
+	if err != nil {
+		return nil, err
+	}
+	pif.Ref = result.Value.(string)
+	pif.Client = client
+	return
+}
+
 func (client *XenAPIClient) GetNetworkByNameLabel(name_label string) (networks []*Network, err error) {
 	networks = make([]*Network, 0)
 	result := APIResult{}
@@ -350,6 +408,23 @@ func (client *XenAPIClient) GetPIFs() (pifs []*PIF, err error) {
 	return pifs, nil
 }
 
+func (client *XenAPIClient) GetVIFs() (vifs []*VIF, err error) {
+	vifs = make([]*VIF, 0)
+	result := APIResult{}
+	err = client.APICall(&result, "VIF.get_all")
+	if err != nil {
+		return nil, err
+	}
+	for _, elem := range result.Value.([]interface{}) {
+		vif := new(VIF)
+		vif.Ref = elem.(string)
+		vif.Client = client
+		vifs = append(vifs, vif)
+	}
+
+	return vifs, nil
+}
+
 func (client *XenAPIClient) CreateTask() (task *Task, err error) {
 	result := APIResult{}
 	err = client.APICall(&result, "task.create", "packer-task", "Packer task")
@@ -386,9 +461,97 @@ func (client *XenAPIClient) CreateNetwork(name_label string, name_description st
 
 func NewXenAPIClient(host, username, password string) (client XenAPIClient) {
 	client.Host = host
-	client.Url = "http://" + host
+	client.Url = fmt.Sprintf("http://%s", host)
 	client.Username = username
 	client.Password = password
 	client.RPC, _ = xmlrpc.NewClient(client.Url, nil)
 	return
+}
+
+//todo: check if logout is possible
+func (client *XenAPIClient) Close() error {
+	return client.RPC.Close()
+}
+
+func (client *XenAPIClient) CreateVbd(vm_ref, vdi_ref, vbdType, mode string, bootable bool) (*VBD, error) {
+	vbd := new(VBD)
+	oc := make(xmlrpc.Struct)
+	vbd_rec := make(xmlrpc.Struct)
+	vbd_rec["other_config"] = oc
+	vbd_rec["status_code"] = "0"
+	vbd_rec["VM"] = vm_ref
+	vbd_rec["unplugabble"] = "0"
+	vbd_rec["VDI"] = vdi_ref //empty for CDs
+	vbd_rec["qos_algorithm_type"] = ""
+	vbd_rec["bootable"] = bootable
+	vbd_rec["storage_lock"] = "0"
+	vbd_rec["currently_attached"] = "0"
+	vbd_rec["mode"] = mode
+
+	vm := new(VM)
+	vm.Client = client
+	vm.Ref = vm_ref
+	vbds, err := vm.GetVBDs()
+	if err != nil {
+		return nil, err
+	}
+
+	vbd_rec["userdevice"] = fmt.Sprintf("%d", len(vbds))
+	vbd_rec["qos_algorithm_params"] = oc
+	vbd_rec["type"] = vbdType //CD or Disk
+	if vbdType == "CD" {
+		vbd_rec["empty"] = true
+	} else if vbdType == "Disk" {
+		vbd_rec["empty"] = false
+	} else {
+		vbd_rec["empty"] = true
+	}
+	vbd.Client = client
+
+	result := APIResult{}
+	err = client.APICall(&result, "VBD.create", vbd_rec)
+	if err != nil {
+		return nil, fmt.Errorf("apicall error %+v", err)
+	}
+	vbd.Ref = result.Value.(string)
+	return vbd, nil
+}
+
+func (client *XenAPIClient) GetVBDByUuid(vbd_uuid string) (vbd *VBD, err error) {
+	vbd = new(VBD)
+	result := APIResult{}
+	err = client.APICall(&result, "VBD.get_by_uuid", vbd_uuid)
+	if err != nil {
+		return nil, err
+	}
+	vbd.Ref = result.Value.(string)
+	vbd.Client = client
+	return
+}
+
+func (client *XenAPIClient) CreateVM(config VMConfig) (new_instance *VM, err error) {
+	templates, err := client.GetVMByNameLabel(config.GuestOS)
+	if err != nil || len(templates) == 0 {
+		return nil, fmt.Errorf(`no template exist for guestOS "%s". %+v`, config.GuestOS, err)
+	}
+
+	clone := new(VM)
+	clone.Client = client
+	clone.Ref = templates[0].Ref
+
+	if new_instance, err = clone.Clone(config.Name_label); err != nil {
+		return nil, err
+	}
+
+	if config.Other_config != nil {
+		if err = new_instance.SetOtherConfig(config.Other_config); err != nil {
+			return nil, err
+		}
+	}
+
+	if err = new_instance.Provision(); err != nil {
+		return nil, err
+	}
+
+	return new_instance, nil
 }

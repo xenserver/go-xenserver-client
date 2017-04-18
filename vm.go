@@ -2,11 +2,21 @@ package client
 
 import (
 	"fmt"
-	"github.com/nilshell/xmlrpc"
 	"strconv"
+
+	"github.com/nilshell/xmlrpc"
 )
 
 type VM XenAPIObject
+
+type VMConfig struct {
+	Name_label   string // new vm name
+	GuestOS      string // name_label of the template to be cloned
+	Other_config map[string]string
+	CPUMax       uint
+	MemoryMax    uint
+	Image        string
+}
 
 func (self *VM) Clone(name_label string) (new_instance *VM, err error) {
 	new_instance = new(VM)
@@ -95,7 +105,7 @@ func (self *VM) Destroy() (err error) {
 
 func (self *VM) Start(paused, force bool) (err error) {
 	result := APIResult{}
-	err = self.Client.APICall(&result, "VM.start", self.Ref, paused, force)
+	err = self.Client.APICall(&result, "Async.VM.start", self.Ref, paused, force)
 	if err != nil {
 		return err
 	}
@@ -122,7 +132,7 @@ func (self *VM) CleanShutdown() (err error) {
 
 func (self *VM) HardShutdown() (err error) {
 	result := APIResult{}
-	err = self.Client.APICall(&result, "VM.hard_shutdown", self.Ref)
+	err = self.Client.APICall(&result, "Async.VM.hard_shutdown", self.Ref)
 	if err != nil {
 		return err
 	}
@@ -156,6 +166,15 @@ func (self *VM) Unpause() (err error) {
 	return
 }
 
+func (self *VM) Pause() (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.pause", self.Ref)
+	if err != nil {
+		return err
+	}
+	return
+}
+
 func (self *VM) Resume(paused, force bool) (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.resume", self.Ref, paused, force)
@@ -163,20 +182,6 @@ func (self *VM) Resume(paused, force bool) (err error) {
 		return err
 	}
 	return
-}
-
-func (self *VM) GetHVMBootPolicy() (bootOrder string, err error) {
-	result := APIResult{}
-	err = self.Client.APICall(&result, "VM.get_HVM_boot_policy", self.Ref)
-	if err != nil {
-		return "", err
-	}
-	bootOrder = ""
-	if result.Value != nil {
-		bootOrder = result.Value.(string)
-	}
-
-	return bootOrder, nil
 }
 
 func (self *VM) SetHVMBoot(policy, bootOrder string) (err error) {
@@ -192,6 +197,25 @@ func (self *VM) SetHVMBoot(policy, bootOrder string) (err error) {
 	if err != nil {
 		return err
 	}
+	return
+}
+
+func (self *VM) GetHVMBootOrder() (bootOrder string, err error) {
+
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_HVM_boot_params", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	boot_order_ := result.Value.(xmlrpc.Struct)
+
+	if value, ok := boot_order_["order"]; ok {
+		bootOrder = value.(string)
+		return
+	}
+
+	bootOrder = ""
+
 	return
 }
 
@@ -263,8 +287,8 @@ func (self *VM) GetUuid() (uuid string, err error) {
 	return uuid, nil
 }
 
-func (self *VM) GetVBDs() (vbds []VBD, err error) {
-	vbds = make([]VBD, 0)
+func (self *VM) GetVBDs() (vbds []*VBD, err error) {
+	vbds = make([]*VBD, 0)
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.get_VBDs", self.Ref)
 	if err != nil {
@@ -274,10 +298,27 @@ func (self *VM) GetVBDs() (vbds []VBD, err error) {
 		vbd := VBD{}
 		vbd.Ref = elem.(string)
 		vbd.Client = self.Client
-		vbds = append(vbds, vbd)
+		vbds = append(vbds, &vbd)
 	}
 
 	return vbds, nil
+}
+
+func (self *VM) GetConsoles() (consoles []*Console, err error) {
+	consoles = make([]*Console, 0)
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_consoles", self.Ref)
+	if err != nil {
+		return consoles, err
+	}
+	for _, elem := range result.Value.([]interface{}) {
+		console := Console{}
+		console.Ref = elem.(string)
+		console.Client = self.Client
+		consoles = append(consoles, &console)
+	}
+
+	return consoles, nil
 }
 
 func (self *VM) GetAllowedVBDDevices() (devices []string, err error) {
@@ -329,30 +370,13 @@ func (self *VM) GetAllowedVIFDevices() (devices []string, err error) {
 	return devices, nil
 }
 
-func (self *VM) GetDisks() (vdis []*VDI, err error) {
+func (self *VM) GetDisks() (vbds []*VBD, err error) {
 	// Return just data disks (non-isos)
-	vdis = make([]*VDI, 0)
-	vbds, err := self.GetVBDs()
+	vbds, err = self.GetVBDs()
 	if err != nil {
 		return nil, err
 	}
-
-	for _, vbd := range vbds {
-		rec, err := vbd.GetRecord()
-		if err != nil {
-			return nil, err
-		}
-		if rec["type"] == "Disk" {
-
-			vdi, err := vbd.GetVDI()
-			if err != nil {
-				return nil, err
-			}
-			vdis = append(vdis, vdi)
-
-		}
-	}
-	return vdis, nil
+	return vbds, nil
 }
 
 func (self *VM) GetVMGuestMetrics() (vm_guest_metrics *VM_Guest_Metrics, err error) {
@@ -395,7 +419,7 @@ func (self *VM) GetGuestMetrics() (metrics map[string]interface{}, err error) {
 	return result.Value.(xmlrpc.Struct), nil
 }
 
-func (self *VM) SetStaticMemoryRange(min, max uint64) (err error) {
+func (self *VM) SetStaticMemoryRange(min, max uint) (err error) {
 	result := APIResult{}
 	strMin := fmt.Sprintf("%d", min)
 	strMax := fmt.Sprintf("%d", max)
@@ -403,6 +427,17 @@ func (self *VM) SetStaticMemoryRange(min, max uint64) (err error) {
 	if err != nil {
 		return err
 	}
+	return
+}
+
+func (self *VM) GetStaticMemoryMax() (memory_max int, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_memory_static_max", self.Ref)
+	if err != nil {
+		return 0, err
+	}
+	memory_max_ := result.Value.(string)
+	memory_max, err = strconv.Atoi(memory_max_)
 	return
 }
 
@@ -451,17 +486,6 @@ func (self *VM) ConnectVdi(vdi *VDI, vdiType VDIType, userdevice string) (err er
 
 	result = APIResult{}
 	err = self.Client.APICall(&result, "VBD.get_uuid", vbd_ref)
-
-	/*
-	   // 2. Plug VBD (Non need - the VM hasn't booted.
-	   // @todo - check VM state
-	   result = APIResult{}
-	   err = self.Client.APICall(&result, "VBD.plug", vbd_ref)
-
-	   if err != nil {
-	       return err
-	   }
-	*/
 	return
 }
 
@@ -551,6 +575,20 @@ func (self *VM) SetVCpuMax(vcpus uint) (err error) {
 	return
 }
 
+func (self *VM) GetVCpuMax() (vcpus int, err error) {
+	result := APIResult{}
+
+	err = self.Client.APICall(&result, "VM.get_VCPUs_max", self.Ref)
+
+	if err != nil {
+		return 0, err
+	}
+	vcpus_ := result.Value.(string)
+	vcpus, err = strconv.Atoi(vcpus_)
+
+	return
+}
+
 func (self *VM) SetVCpuAtStartup(vcpus uint) (err error) {
 	result := APIResult{}
 	strVcpu := fmt.Sprintf("%d", vcpus)
@@ -569,6 +607,16 @@ func (self *VM) SetIsATemplate(is_a_template bool) (err error) {
 	if err != nil {
 		return err
 	}
+	return
+}
+
+func (self *VM) GetIsATemplate() (is_template bool, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_is_a_template", self.Ref)
+	if err != nil {
+		return false, err
+	}
+	is_template = result.Value.(bool)
 	return
 }
 
@@ -615,6 +663,20 @@ func (self *VM) SetDescription(description string) (err error) {
 	if err != nil {
 		return err
 	}
+	return
+}
+
+func (self *VM) GetDescription() (description string, err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_name_description", self.Ref)
+	if err != nil {
+		return "", err
+	}
+	description = ""
+	if result.Value != nil {
+		description = result.Value.(string)
+	}
+
 	return
 }
 
