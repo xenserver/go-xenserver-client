@@ -600,6 +600,24 @@ func (self *VM) SetOtherConfig(other_config map[string]string) (err error) {
 	return
 }
 
+func (self *VM) AddToOtherConfig(key string, value string) (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.add_to_other_config", self.Ref, key, value)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (self *VM) RemoveFromOtherConfig(key string) (err error) {
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.remove_from_other_config", self.Ref, key)
+	if err != nil {
+		return err
+	}
+	return
+}
+
 func (self *VM) SetNameLabel(name_label string) (err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.set_name_label", self.Ref, name_label)
