@@ -45,6 +45,21 @@ func (client *XenAPIClient) Login() (err error) {
 
 	err = client.RPCCall(&result, "session.login_with_password", params)
 	if err == nil {
+		if resultError, ok := result["ErrorDescription"]; ok {
+			errorDescription := resultError.([]interface{})
+			errorName := errorDescription[0]
+
+			if errorName == "HOST_IS_SLAVE" {
+				master := errorDescription[1].(string)
+
+				log.Infof("Host:%s is slave. Attempting relogin to master:%s", client.Host, master)
+				client.Host = master
+				client.Url = fmt.Sprintf("http://%s", master)
+				client.RPC, _ = xmlrpc.NewClient(client.Url, nil)
+
+				return client.Login()
+			}
+		}
 		// err might not be set properly, so check the reference
 		if result["Value"] == nil {
 			return errors.New("Invalid credentials supplied")
