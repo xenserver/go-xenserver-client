@@ -664,7 +664,6 @@ func (self *VM) GetConsoles() (consoles []Console, err error) {
 	result := APIResult{}
 	err = self.Client.APICall(&result, "VM.get_consoles", self.Ref)
 
-
 	if err != nil {
 		return consoles, err
 	}
