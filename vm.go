@@ -658,3 +658,21 @@ func (self *VM) SetHaAlwaysRun(ha_always_run bool) (err error) {
 	}
 	return
 }
+
+func (self *VM) GetConsoles() (consoles []Console, err error) {
+	consoles = make([]Console, 0)
+	result := APIResult{}
+	err = self.Client.APICall(&result, "VM.get_consoles", self.Ref)
+
+	if err != nil {
+		return consoles, err
+	}
+	for _, elem := range result.Value.([]interface{}) {
+		console := Console{}
+		console.Ref = elem.(string)
+		console.Client = self.Client
+		consoles = append(consoles, console)
+	}
+
+	return consoles, nil
+}
